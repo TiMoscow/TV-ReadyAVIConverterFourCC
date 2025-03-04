@@ -1,7 +1,6 @@
 @echo off
-:: Версия кода: 0.0.3
+:: Версия кода: 0.1.1
 
-@echo off
 chcp 65001 > nul
 
 :: Укажите новый FourCC код
@@ -21,6 +20,15 @@ if exist "%rollbackFile%" del "%rollbackFile%"
 for /r %%f in (*.avi) do (
     echo Обработка файла: %%f
     echo Обработка файла: %%f >> "%logFile%"
+
+        :: Проверяем, содержит ли файл FourCC код XVID или DIVX
+        ffmpeg -i "%%f" 2>&1 | findstr /i "xvid divx" >nul
+        if errorlevel 1 (
+            echo Файл не содержит XVID/DIVX: %%f
+            echo Файл не содержит XVID/DIVX: %%f >> "%logFile%"
+        ) else (
+            echo Файл содержит XVID/DIVX: %%f
+            echo Файл содержит XVID/DIVX: %%f >> "%logFile%"
 
     :: Создаем временный файл с новым FourCC кодом
     ffmpeg -i "%%f" -c copy -vtag %newFourCC% -y "%%~dpnf_temp.avi"
