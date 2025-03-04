@@ -1,20 +1,22 @@
 @echo off
-:: Версия кода: 0.2.8
+:: Версия кода: 0.3.0
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
 
 :: Настройки
 set "newFourCC=FMP4"
-set "logFile=change_log.txt"
+set "logFile=change_log_%date:~6,4%-%date:~3,2%-%date:~0,2%.txt"
 set "rollbackFile=rollback.bat"
-
-:: Очистка логов
-if exist "%logFile%" del "%logFile%"
-if exist "%rollbackFile%" del "%rollbackFile%"
 
 :: Флаг для создания rollback.bat
 set "needRollback=0"
+
+:: Добавляем разделитель и информацию о запуске в лог
+echo ========================================= >> "%logFile%"
+echo [%date% %time%] Запуск скрипта: %~f0 >> "%logFile%"
+echo Рабочая папка: %cd% >> "%logFile%"
+echo ========================================= >> "%logFile%"
 
 :: Обработка всех AVI-файлов
 for /r %%f in (*.avi) do (
@@ -67,6 +69,11 @@ if !needRollback! EQU 1 (
 ) else (
     if exist "%rollbackFile%" del "%rollbackFile%"
 )
+
+:: Добавляем разделитель в лог
+echo ========================================= >> "%logFile%"
+echo [%date% %time%] Завершение работы скрипта >> "%logFile%"
+echo ========================================= >> "%logFile%"
 
 echo Все файлы обработаны. Лог: %logFile%
 pause
