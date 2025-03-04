@@ -1,24 +1,50 @@
 @echo off
-:: Версия кода: 0.0.2
+:: Версия кода: 0.0.3
 
+@echo off
 chcp 65001 > nul
 
-setlocal
+:: Укажите новый FourCC код
+set "newFourCC=FMP4"
 
-:: Укажем папку для обработанных файлов
-set "outputFolder=Samsung_Yes"
+:: Укажите имя лог-файла
+set "logFile=change_log.txt"
 
-:: Создаем папку, если она не существует
-if not exist "%outputFolder%" (
-    mkdir "%outputFolder%"
-)
+:: Укажите имя файла для отката
+set "rollbackFile=rollback.bat"
 
-:: Обрабатываем все AVI-файлы в текущей папке
-for %%f in (*.avi) do (
+:: Очищаем лог-файл и файл отката, если они существуют
+if exist "%logFile%" del "%logFile%"
+if exist "%rollbackFile%" del "%rollbackFile%"
+
+:: Рекурсивно обрабатываем все AVI-файлы
+for /r %%f in (*.avi) do (
     echo Обработка файла: %%f
-    ffmpeg -i "%%f" -c copy -bsf:v mpeg4_unpack_bframes -vtag FMP4 "%outputFolder%\source_%%f"
-    echo Файл сохранен в: "%outputFolder%\source_%%f"
+    echo Обработка файла: %%f >> "%logFile%"
+
+    :: Создаем временный файл с новым FourCC кодом
+    ffmpeg -i "%%f" -c copy -vtag %newFourCC% -y "%%~dpnf_temp.avi"
+    if errorlevel 1 (
+        echo Ошибка при обработке файла: %%f
+        echo Ошибка при обработке файла: %%f >> "%logFile%"
+    ) else (
+        :: Логируем изменения
+        echo Исходный файл: %%f >> "%logFile%"
+        echo Временный файл: %%~dpnf_temp.avi >> "%logFile%"
+        echo FourCC изменён на: %newFourCC% >> "%logFile%"
+        echo. >> "%logFile%"
+
+        :: Добавляем команду для отката
+        echo del "%%f" >> "%rollbackFile%"
+        echo ren "%%~dpnf_temp.avi" "%%~nxf" >> "%rollbackFile%"
+
+        :: Удаляем исходный файл и переименовываем временный
+        del "%%f"
+        ren "%%~dpnf_temp.avi" "%%~nxf"
+        echo Файл успешно обработан: %%f
+    )
 )
 
-echo Все файлы обработаны и сохранены в папку: %outputFolder%
+echo Все файлы обработаны. Лог сохранён в "%logFile%".
+echo Для отката изменений запустите файл "%rollbackFile%".
 pause
