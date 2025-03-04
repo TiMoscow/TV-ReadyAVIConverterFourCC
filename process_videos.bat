@@ -1,5 +1,5 @@
 @echo off
-:: Версия кода: 0.1.1
+:: Версия кода: 0.1.2
 
 chcp 65001 > nul
 
@@ -21,35 +21,36 @@ for /r %%f in (*.avi) do (
     echo Обработка файла: %%f
     echo Обработка файла: %%f >> "%logFile%"
 
-        :: Проверяем, содержит ли файл FourCC код XVID или DIVX
-        ffmpeg -i "%%f" 2>&1 | findstr /i "xvid divx" >nul
-        if errorlevel 1 (
-            echo Файл не содержит XVID/DIVX: %%f
-            echo Файл не содержит XVID/DIVX: %%f >> "%logFile%"
-        ) else (
-            echo Файл содержит XVID/DIVX: %%f
-            echo Файл содержит XVID/DIVX: %%f >> "%logFile%"
-
-    :: Создаем временный файл с новым FourCC кодом
-    ffmpeg -i "%%f" -c copy -vtag %newFourCC% -y "%%~dpnf_temp.avi"
+    :: Проверяем, содержит ли файл FourCC код XVID или DIVX
+    ffmpeg -hide_banner -i "%%f" 2>&1 | findstr /i "xvid divx" >nul
     if errorlevel 1 (
-        echo Ошибка при обработке файла: %%f
-        echo Ошибка при обработке файла: %%f >> "%logFile%"
+        echo Файл не содержит XVID/DIVX: %%f
+        echo Файл не содержит XVID/DIVX: %%f >> "%logFile%"
     ) else (
-        :: Логируем изменения
-        echo Исходный файл: %%f >> "%logFile%"
-        echo Временный файл: %%~dpnf_temp.avi >> "%logFile%"
-        echo FourCC изменён на: %newFourCC% >> "%logFile%"
-        echo. >> "%logFile%"
+        echo Файл содержит XVID/DIVX: %%f
+        echo Файл содержит XVID/DIVX: %%f >> "%logFile%"
 
-        :: Добавляем команду для отката
-        echo del "%%f" >> "%rollbackFile%"
-        echo ren "%%~dpnf_temp.avi" "%%~nxf" >> "%rollbackFile%"
+        :: Создаем временный файл с новым FourCC кодом
+        ffmpeg -i "%%f" -c copy -vtag %newFourCC% -y "%%~dpnf_temp.avi"
+        if errorlevel 1 (
+            echo Ошибка при обработке файла: %%f
+            echo Ошибка при обработке файла: %%f >> "%logFile%"
+        ) else (
+            :: Логируем изменения
+            echo Исходный файл: %%f >> "%logFile%"
+            echo Временный файл: %%~dpnf_temp.avi >> "%logFile%"
+            echo FourCC изменён на: %newFourCC% >> "%logFile%"
+            echo. >> "%logFile%"
 
-        :: Удаляем исходный файл и переименовываем временный
-        del "%%f"
-        ren "%%~dpnf_temp.avi" "%%~nxf"
-        echo Файл успешно обработан: %%f
+            :: Добавляем команду для отката
+            echo del "%%f" >> "%rollbackFile%"
+            echo ren "%%~dpnf_temp.avi" "%%~nxf" >> "%rollbackFile%"
+
+            :: Удаляем исходный файл и переименовываем временный
+            del "%%f"
+            ren "%%~dpnf_temp.avi" "%%~nxf"
+            echo Файл успешно обработан: %%f
+        )
     )
 )
 
