@@ -1,59 +1,61 @@
 @echo off
-:: Версия кода: 0.1.2
+:: Версия кода: 0.2.0
 
+setlocal enabledelayedexpansion
 chcp 65001 > nul
 
-:: Укажите новый FourCC код
+:: Настройки
 set "newFourCC=FMP4"
-
-:: Укажите имя лог-файла
 set "logFile=change_log.txt"
-
-:: Укажите имя файла для отката
 set "rollbackFile=rollback.bat"
 
-:: Очищаем лог-файл и файл отката, если они существуют
+:: Очистка логов
 if exist "%logFile%" del "%logFile%"
 if exist "%rollbackFile%" del "%rollbackFile%"
 
-:: Рекурсивно обрабатываем все AVI-файлы
+:: Обработка всех AVI-файлов
 for /r %%f in (*.avi) do (
-    echo Обработка файла: %%f
-    echo Обработка файла: %%f >> "%logFile%"
+    set "currentFile=%%~f"
+    echo Обработка: !currentFile!
 
-    :: Проверяем, содержит ли файл FourCC код XVID или DIVX
-    ffmpeg -hide_banner -i "%%f" 2>&1 | findstr /i "xvid divx" >nul
+    :: Проверка FourCC кода через FFmpeg
+    ffmpeg -hide_banner -i "!currentFile!" 2>&1 | findstr /i "xvid divx" >nul
     if errorlevel 1 (
-        echo Файл не содержит XVID/DIVX: %%f
-        echo Файл не содержит XVID/DIVX: %%f >> "%logFile%"
-    ) else (
-        echo Файл содержит XVID/DIVX: %%f
-        echo Файл содержит XVID/DIVX: %%f >> "%logFile%"
-
-        :: Создаем временный файл с новым FourCC кодом
-        ffmpeg -i "%%f" -c copy -vtag %newFourCC% -y "%%~dpnf_temp.avi"
-        if errorlevel 1 (
-            echo Ошибка при обработке файла: %%f
-            echo Ошибка при обработке файла: %%f >> "%logFile%"
-        ) else (
-            :: Логируем изменения
-            echo Исходный файл: %%f >> "%logFile%"
-            echo Временный файл: %%~dpnf_temp.avi >> "%logFile%"
-            echo FourCC изменён на: %newFourCC% >> "%logFile%"
-            echo. >> "%logFile%"
-
-            :: Добавляем команду для отката
-            echo del "%%f" >> "%rollbackFile%"
-            echo ren "%%~dpnf_temp.avi" "%%~nxf" >> "%rollbackFile%"
-
-            :: Удаляем исходный файл и переименовываем временный
-            del "%%f"
-            ren "%%~dpnf_temp.avi" "%%~nxf"
-            echo Файл успешно обработан: %%f
-        )
+        echo [Пропуск] Файл не содержит XVID/DIVX >> "%logFile%"
+        goto :next_file
     )
+
+    :: Создание временного файла
+    set "tempFile=!currentFile!_temp.avi"
+    ffmpeg -i "!currentFile!" -c copy -vtag %newFourCC% -y "!tempFile!" 2>&1 >> "%logFile%"
+
+    :: Проверка успешности FFmpeg
+    if errorlevel 1 (
+        echo [Ошибка] FFmpeg не смог обработать файл >> "%logFile%"
+        del "!tempFile!" 2>nul
+        goto :next_file
+    )
+
+    :: Проверка размера файла (минимум 1 КБ)
+    for %%I in ("!tempFile!") do set "tempSize=%%~zI"
+    if !tempSize! LSS 1024 (
+        echo [Ошибка] Временный файл слишком мал >> "%logFile%"
+        del "!tempFile!" 2>nul
+        goto :next_file
+    )
+
+    :: Удаление оригинала и переименование
+    del "!currentFile!"
+    ren "!tempFile!" "%%~nxf"
+
+    :: Запись в rollback.bat
+    echo del "%%~f" >> "%rollbackFile%"
+    echo ren "%%~f" "%%~nxft" >> "%rollbackFile%"
+
+    :next_file
+    set "currentFile="
 )
 
-echo Все файлы обработаны. Лог сохранён в "%logFile%".
-echo Для отката изменений запустите файл "%rollbackFile%".
+echo Все файлы обработаны. Лог: %logFile%
+echo Для отката запустите: %rollbackFile%
 pause
