@@ -1,5 +1,5 @@
 @echo off
-:: Версия кода: 0.2.0
+:: Версия кода: 0.2.3
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
@@ -21,38 +21,34 @@ for /r %%f in (*.avi) do (
     :: Проверка FourCC кода через FFmpeg
     ffmpeg -hide_banner -i "!currentFile!" 2>&1 | findstr /i "xvid divx" >nul
     if errorlevel 1 (
-        echo [Пропуск] Файл не содержит XVID/DIVX >> "%logFile%"
-        goto :next_file
+        echo [Пропуск] Файл не содержит XVID/DIVX: !currentFile! >> "%logFile%"
+    ) else (
+        :: Создание временного файла
+        set "tempFile=!currentFile!_temp.avi"
+        ffmpeg -i "!currentFile!" -c copy -vtag %newFourCC% -y "!tempFile!" 2>&1 >> "%logFile%"
+
+        :: Проверка успешности FFmpeg
+        if errorlevel 1 (
+            echo [Ошибка] FFmpeg не смог обработать файл: !currentFile! >> "%logFile%"
+            del "!tempFile!" 2>nul
+        ) else (
+            :: Проверка размера файла (минимум 1 КБ)
+            for %%I in ("!tempFile!") do set "tempSize=%%~zI"
+            if !tempSize! LSS 1024 (
+                echo [Ошибка] Временный файл слишком мал: !currentFile! >> "%logFile%"
+                del "!tempFile!" 2>nul
+            ) else (
+                :: Удаление оригинала и переименование
+                del "!currentFile!" 2>nul && (
+                    ren "!tempFile!" "%%~nxf"
+                    echo del "%%~f" >> "%rollbackFile%"
+                    echo ren "%%~f" "%%~nxft" >> "%rollbackFile%"
+                ) || (
+                    echo [Ошибка] Не удалось удалить оригинал: !currentFile! >> "%logFile%"
+                )
+            )
+        )
     )
-
-    :: Создание временного файла
-    set "tempFile=!currentFile!_temp.avi"
-    ffmpeg -i "!currentFile!" -c copy -vtag %newFourCC% -y "!tempFile!" 2>&1 >> "%logFile%"
-
-    :: Проверка успешности FFmpeg
-    if errorlevel 1 (
-        echo [Ошибка] FFmpeg не смог обработать файл >> "%logFile%"
-        del "!tempFile!" 2>nul
-        goto :next_file
-    )
-
-    :: Проверка размера файла (минимум 1 КБ)
-    for %%I in ("!tempFile!") do set "tempSize=%%~zI"
-    if !tempSize! LSS 1024 (
-        echo [Ошибка] Временный файл слишком мал >> "%logFile%"
-        del "!tempFile!" 2>nul
-        goto :next_file
-    )
-
-    :: Удаление оригинала и переименование
-    del "!currentFile!"
-    ren "!tempFile!" "%%~nxf"
-
-    :: Запись в rollback.bat
-    echo del "%%~f" >> "%rollbackFile%"
-    echo ren "%%~f" "%%~nxft" >> "%rollbackFile%"
-
-    :next_file
     set "currentFile="
 )
 
