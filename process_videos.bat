@@ -1,5 +1,5 @@
 @echo off
-:: Версия кода: 0.3.6
+:: Версия кода: 0.3.9
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
@@ -41,10 +41,10 @@ for /r %%f in (*.avi) do (
         goto :next_file
     )
 
-    :: Проверка FourCC кода через FFmpeg
-    ffmpeg -hide_banner -i "!currentFile!" 2>&1 | findstr /i "xvid divx" >nul
+    :: Проверка, содержит ли файл XVID, DIVX или DX50
+    ffmpeg -hide_banner -i "!currentFile!" 2>&1 | findstr /i "xvid divx dx50" >nul
     if errorlevel 1 (
-        echo [%date% %time%] [Пропуск] Файл не содержит XVID/DIVX: !currentFile! >> "%logFile%"
+        echo [%date% %time%] [Пропуск] Файл не содержит XVID/DIVX/DX50: !currentFile! >> "%logFile%"
         del "!backupFile!" >nul 2>&1
     ) else (
         :: Получаем параметры оригинального файла
