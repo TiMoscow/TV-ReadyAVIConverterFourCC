@@ -1,5 +1,5 @@
 @echo off
-:: Версия кода: 0.3.4
+:: Версия кода: 0.3.5
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
@@ -52,8 +52,8 @@ for /r %%f in (*.avi) do (
         ffmpeg -i "!currentFile!" 2>&1 | findstr /i "stream #" >> "%logFile%"
         ffmpeg -i "!currentFile!" 2>&1 | findstr /i "Duration\|bitrate" >> "%logFile%"
 
-        :: Обработка файла
-        ffmpeg -i "!currentFile!" -c copy -vtag %newFourCC% -y "!currentFile!_temp.avi" 2>&1 >> "%logFile%"
+        :: Обработка файла с сохранением всех аудиодорожек
+        ffmpeg -i "!currentFile!" -map 0 -c copy -vtag %newFourCC% -y "!currentFile!_temp.avi" 2>&1 >> "%logFile%"
         if errorlevel 1 (
             echo [%date% %time%] [Ошибка] FFmpeg не смог обработать файл: !currentFile! >> "%logFile%"
             del "!currentFile!_temp.avi" >nul 2>&1
