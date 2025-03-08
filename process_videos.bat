@@ -1,5 +1,5 @@
 @echo off
-:: Версия кода: 0.3.3
+:: Версия кода: 0.3.4
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
@@ -47,6 +47,11 @@ for /r %%f in (*.avi) do (
         echo [%date% %time%] [Пропуск] Файл не содержит XVID/DIVX: !currentFile! >> "%logFile%"
         del "!backupFile!" >nul 2>&1
     ) else (
+        :: Записываем параметры оригинального файла в лог
+        echo [%date% %time%] Параметры оригинального файла: !currentFile! >> "%logFile%"
+        ffmpeg -i "!currentFile!" 2>&1 | findstr /i "stream #" >> "%logFile%"
+        ffmpeg -i "!currentFile!" 2>&1 | findstr /i "Duration\|bitrate" >> "%logFile%"
+
         :: Обработка файла
         ffmpeg -i "!currentFile!" -c copy -vtag %newFourCC% -y "!currentFile!_temp.avi" 2>&1 >> "%logFile%"
         if errorlevel 1 (
@@ -58,6 +63,12 @@ for /r %%f in (*.avi) do (
             move /y "!currentFile!_temp.avi" "!currentFile!" >nul 2>&1
             if exist "!currentFile!" (
                 echo [%date% %time%] [Успех] Обработан: !currentFile! >> "%logFile%"
+
+                :: Записываем параметры обработанного файла в лог
+                echo [%date% %time%] Параметры обработанного файла: !currentFile! >> "%logFile%"
+                ffmpeg -i "!currentFile!" 2>&1 | findstr /i "stream #" >> "%logFile%"
+                ffmpeg -i "!currentFile!" 2>&1 | findstr /i "Duration\|bitrate" >> "%logFile%"
+
                 :: Удаление резервной копии после успешной обработки
                 del "!backupFile!" >nul 2>&1
             ) else (
@@ -82,16 +93,6 @@ if !needRollback! EQU 1 (
 :: Добавляем разделитель в лог
 echo ========================================= >> "%logFile%"
 echo [%date% %time%] Завершение работы скрипта >> "%logFile%"
-echo ================================================================================== >> "%logFile%"
-
-:: Добавляем подсказку для проверки изменений
-echo. >> "%logFile%"
-echo [Подсказка] Как проверить, что именно изменилось: >> "%logFile%"
-echo 1. Используйте команду `ffmpeg -i input.avi` и `ffmpeg -i output.avi` для сравнения информации о кодеках и параметрах. >> "%logFile%"
-echo 2. Проверьте метаданные с помощью утилиты `mediainfo` или `ffprobe`. >> "%logFile%"
-echo 3. Убедитесь, что данные не были перекодированы, с помощью команды: >> "%logFile%"
-echo    `ffmpeg -i input.avi -c copy -map 0 -f null -`. >> "%logFile%"
-echo 4. Для побайтового сравнения файлов используйте `fc /b` (Windows) или `diff` (Linux). >> "%logFile%"
 echo ================================================================================== >> "%logFile%"
 
 echo Все файлы обработаны. Лог: %logFile%
