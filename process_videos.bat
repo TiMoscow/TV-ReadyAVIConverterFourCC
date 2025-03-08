@@ -1,19 +1,20 @@
 @echo off
-:: Версия кода: 0.3.0
+:: Версия кода: 0.3.1
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
 
 :: Настройки
 set "newFourCC=FMP4"
-set "logFile=change_log_%date:~6,4%-%date:~3,2%-%date:~0,2%.txt"
+set "logFile=change_log.txt"
 set "rollbackFile=rollback.bat"
 
 :: Флаг для создания rollback.bat
 set "needRollback=0"
 
 :: Добавляем разделитель и информацию о запуске в лог
-echo ========================================= >> "%logFile%"
+echo  - >> "%logFile%"
+echo ================================================================================== >> "%logFile%"
 echo [%date% %time%] Запуск скрипта: %~f0 >> "%logFile%"
 echo Рабочая папка: %cd% >> "%logFile%"
 echo ========================================= >> "%logFile%"
@@ -73,7 +74,7 @@ if !needRollback! EQU 1 (
 :: Добавляем разделитель в лог
 echo ========================================= >> "%logFile%"
 echo [%date% %time%] Завершение работы скрипта >> "%logFile%"
-echo ========================================= >> "%logFile%"
+echo ================================================================================== >> "%logFile%"
 
 echo Все файлы обработаны. Лог: %logFile%
 pause
