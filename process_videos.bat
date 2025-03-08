@@ -1,5 +1,5 @@
 @echo off
-:: Версия кода: 0.3.5
+:: Версия кода: 0.3.6
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
@@ -47,10 +47,13 @@ for /r %%f in (*.avi) do (
         echo [%date% %time%] [Пропуск] Файл не содержит XVID/DIVX: !currentFile! >> "%logFile%"
         del "!backupFile!" >nul 2>&1
     ) else (
-        :: Записываем параметры оригинального файла в лог
-        echo [%date% %time%] Параметры оригинального файла: !currentFile! >> "%logFile%"
-        ffmpeg -i "!currentFile!" 2>&1 | findstr /i "stream #" >> "%logFile%"
-        ffmpeg -i "!currentFile!" 2>&1 | findstr /i "Duration\|bitrate" >> "%logFile%"
+        :: Получаем параметры оригинального файла
+        for /f "tokens=*" %%a in ('ffmpeg -i "!currentFile!" 2^>^&1 ^| findstr /i "Stream #"') do set "originalStreams=!originalStreams!%%a\n"
+        for /f "tokens=*" %%a in ('ffmpeg -i "!currentFile!" 2^>^&1 ^| findstr /i "Duration\|bitrate"') do set "originalInfo=!originalInfo!%%a\n"
+        for /f "tokens=*" %%a in ('ffprobe -v quiet -show_format "!currentFile!" -of json') do set "originalMetadata=!originalMetadata!%%a\n"
+
+        :: Получаем размер оригинального файла
+        for %%a in ("!currentFile!") do set "originalSize=%%~za"
 
         :: Обработка файла с сохранением всех аудиодорожек
         ffmpeg -i "!currentFile!" -map 0 -c copy -vtag %newFourCC% -y "!currentFile!_temp.avi" 2>&1 >> "%logFile%"
@@ -64,10 +67,36 @@ for /r %%f in (*.avi) do (
             if exist "!currentFile!" (
                 echo [%date% %time%] [Успех] Обработан: !currentFile! >> "%logFile%"
 
-                :: Записываем параметры обработанного файла в лог
-                echo [%date% %time%] Параметры обработанного файла: !currentFile! >> "%logFile%"
-                ffmpeg -i "!currentFile!" 2>&1 | findstr /i "stream #" >> "%logFile%"
-                ffmpeg -i "!currentFile!" 2>&1 | findstr /i "Duration\|bitrate" >> "%logFile%"
+                :: Получаем параметры обработанного файла
+                for /f "tokens=*" %%a in ('ffmpeg -i "!currentFile!" 2^>^&1 ^| findstr /i "Stream #"') do set "processedStreams=!processedStreams!%%a\n"
+                for /f "tokens=*" %%a in ('ffmpeg -i "!currentFile!" 2^>^&1 ^| findstr /i "Duration\|bitrate"') do set "processedInfo=!processedInfo!%%a\n"
+                for /f "tokens=*" %%a in ('ffprobe -v quiet -show_format "!currentFile!" -of json') do set "processedMetadata=!processedMetadata!%%a\n"
+
+                :: Получаем размер обработанного файла
+                for %%a in ("!currentFile!") do set "processedSize=%%~za"
+
+                :: Сравнение параметров и запись различий в лог
+                echo [%date% %time%] Сравнение параметров файла: !currentFile! >> "%logFile%"
+                if not "!originalStreams!"=="!processedStreams!" (
+                    echo [Различие] Потоки: >> "%logFile%"
+                    echo Оригинал: !originalStreams! >> "%logFile%"
+                    echo Обработан: !processedStreams! >> "%logFile%"
+                )
+                if not "!originalInfo!"=="!processedInfo!" (
+                    echo [Различие] Информация: >> "%logFile%"
+                    echo Оригинал: !originalInfo! >> "%logFile%"
+                    echo Обработан: !processedInfo! >> "%logFile%"
+                )
+                if not "!originalMetadata!"=="!processedMetadata!" (
+                    echo [Различие] Метаданные: >> "%logFile%"
+                    echo Оригинал: !originalMetadata! >> "%logFile%"
+                    echo Обработан: !processedMetadata! >> "%logFile%"
+                )
+                if not "!originalSize!"=="!processedSize!" (
+                    echo [Различие] Размер файла: >> "%logFile%"
+                    echo Оригинал: !originalSize! байт >> "%logFile%"
+                    echo Обработан: !processedSize! байт >> "%logFile%"
+                )
 
                 :: Удаление резервной копии после успешной обработки
                 del "!backupFile!" >nul 2>&1
@@ -81,6 +110,14 @@ for /r %%f in (*.avi) do (
     :next_file
     set "currentFile="
     set "backupFile="
+    set "originalStreams="
+    set "originalInfo="
+    set "originalMetadata="
+    set "processedStreams="
+    set "processedInfo="
+    set "processedMetadata="
+    set "originalSize="
+    set "processedSize="
 )
 
 :: Создание rollback.bat только при наличии ошибок
