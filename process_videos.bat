@@ -1,8 +1,16 @@
 @echo off
-:: Версия кода: 0.3.1
+:: Версия кода: 0.3.2
 
 setlocal enabledelayedexpansion
 chcp 65001 > nul
+
+:: Проверка наличия FFmpeg
+where ffmpeg >nul 2>&1
+if errorlevel 1 (
+    echo [Ошибка] FFmpeg не найден. Установите FFmpeg и добавьте его в PATH.
+    pause
+    exit /b 1
+)
 
 :: Настройки
 set "newFourCC=FMP4"
