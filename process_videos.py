@@ -102,7 +102,7 @@ def main():
             print(f"[ERROR] {file_path}: {e}")
 
     # лог
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
         for line in log_lines:
             f.write(line + "\n")
     print(f"\nЛог: {LOG_FILE}")
