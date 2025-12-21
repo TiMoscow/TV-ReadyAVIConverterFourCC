@@ -9,6 +9,7 @@ TARGET_CODECS = {"XVID", "DIVX", "DIV5", "DX50"}  # Какие кодеки ме
 NEW_FOURCC = "FMP4"
 VIDEO_EXT = ".avi"
 LOG_FILE = Path("fourcc_change_log.txt")
+FRAMES_TO_TEST = 10  #  сколько кадров проверять после изменения тегов, для декодирования
 
 # -----------------------------
 # функции
@@ -32,9 +33,21 @@ def check_video(file_path):
     """Проверка видео - ffprobe"""
     try:
         streams = get_video_streams(file_path)
-        return len(streams) > 0  # один видеопоток - гудд
+        if len(streams) == 0:
+            return False
     except Exception:
         return False
+
+    # Дополнительно: декодируем несколько первых кадров
+    cmd = [
+        "ffmpeg", "-v", "error",
+        "-i", str(file_path),
+        "-frames:v", str(FRAMES_TO_TEST),
+        "-f", "null",
+        "-"
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return result.returncode == 0
 
 def change_fourcc(file_path):
     streams = get_video_streams(file_path)
@@ -66,7 +79,7 @@ def change_fourcc(file_path):
         return True
     else:
         temp_file.unlink(missing_ok=True)
-        raise RuntimeError("файл не читается - ffprobe")
+        raise RuntimeError("файл не читается или иная ошибка")
 
 # -----------------------------
 # обработка
