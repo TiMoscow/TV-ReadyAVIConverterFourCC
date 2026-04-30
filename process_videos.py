@@ -14,6 +14,16 @@ FRAMES_TO_TEST = 10  #  сколько кадров проверять посл�
 # -----------------------------
 # функции
 # -----------------------------
+def run_cmd(cmd):
+    """Единая функция запуска команд (фикс кодировки)"""
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="ignore"
+    )
+
 def get_video_streams(file_path):
     """Возвращает список видеопотоков с их FourCC"""
     cmd = [
@@ -23,7 +33,8 @@ def get_video_streams(file_path):
         "-of", "json",
         str(file_path)
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_cmd(cmd)
+
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe error: {result.stderr}")
     data = json.loads(result.stdout)
@@ -46,7 +57,8 @@ def check_video(file_path):
         "-f", "null",
         "-"
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_cmd(cmd)
+
     return result.returncode == 0
 
 def change_fourcc(file_path):
@@ -69,7 +81,8 @@ def change_fourcc(file_path):
         "-vtag", NEW_FOURCC,
         str(temp_file)
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_cmd(cmd)
+
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg error: {result.stderr}")
 
