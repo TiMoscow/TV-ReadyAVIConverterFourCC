@@ -101,20 +101,42 @@ def main():
     folder = Path.cwd()
     log_lines = []
 
-    for file_path in folder.rglob(f"*{VIDEO_EXT}"):
-        try:
-            changed = change_fourcc(file_path)
-            if changed:
-                log_lines.append(f"[OK] FourCC changed: {file_path}")
-                print(f"[OK] FourCC changed: {file_path}")
-            else:
-                log_lines.append(f"[SKIP] No target FourCC found: {file_path}")
-                print(f"[SKIP] No target FourCC: {file_path}")
-        except Exception as e:
-            log_lines.append(f"[ERROR] {file_path}: {e}")
-            print(f"[ERROR] {file_path}: {e}")
+    files = list(folder.rglob(f"*{VIDEO_EXT}"))
+    total = len(files)
 
-    # лог
+    print(f"Найдено файлов: {total}\n")
+
+    for i, file_path in enumerate(files, 1):
+        print(f"[{i}/{total}] Проверка: {file_path}")
+
+        try:
+            streams = get_video_streams(file_path)
+
+            target_found = any(
+                stream.get("codec_tag_string", "").upper() in TARGET_CODECS
+                for stream in streams
+            )
+
+            if not target_found:
+                print(f"[SKIP] Нет нужного FourCC")
+                log_lines.append(f"[SKIP] Нет нужного FourCC: {file_path}")
+                continue
+
+            print(f"[PROCESSING] Меняем FourCC...")
+
+            changed = change_fourcc(file_path)
+
+            if changed:
+                print(f"[OK] Готово\n")
+                log_lines.append(f"[OK] FourCC изменили: {file_path}")
+            else:
+                print(f"[SKIP] Без изменений\n")
+                log_lines.append(f"[SKIP] Без изменений: {file_path}")
+
+        except Exception as e:
+            print(f"[ERROR] {e}\n")
+            log_lines.append(f"[ERROR] {file_path}: {e}")
+
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         for line in log_lines:
             f.write(line + "\n")
